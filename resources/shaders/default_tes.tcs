@@ -1,0 +1,34 @@
+#version 450 core
+
+layout(vertices = 3) out;
+
+in vec4 worldspace_position[];
+in vec3 worldspace_normal[];
+in mat4 pvm[];
+
+out vec4 worldspace_position2[];
+out vec3 worldspace_normal2[];
+out mat4 pvm2[];
+
+uniform float tesParam;
+
+void main() {
+    // Pass through vertex positions
+    gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
+
+    // Pass through normals for later use
+    worldspace_position2[gl_InvocationID] = worldspace_position[gl_InvocationID];
+    worldspace_normal2[gl_InvocationID] = worldspace_normal[gl_InvocationID];
+    pvm2[gl_InvocationID] = pvm[gl_InvocationID];
+
+    // Set tessellation levels based on depth
+//    gl_TessLevelOuter[0] = changeTesDepth * gl_in[0].gl_Position.z;
+//    gl_TessLevelOuter[1] = changeTesDepth * gl_in[1].gl_Position.z;
+//    gl_TessLevelOuter[2] = changeTesDepth * gl_in[2].gl_Position.z;
+     gl_TessLevelOuter[0] = tesParam;
+     gl_TessLevelOuter[1] = tesParam;
+     gl_TessLevelOuter[2] = tesParam;
+
+    // Inner tessellation level (optional)
+     gl_TessLevelInner[0] = tesParam;
+}
