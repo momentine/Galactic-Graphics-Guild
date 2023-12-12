@@ -16,7 +16,7 @@
 #include "utils/sceneparser.h"
 #include "utils/shaderloader.h"
 #include "camera/camera.h"
-#include "shapes/Triangle.h"
+//#include "shapes/Triangle.h"
 #include "shapes/Cube.h"
 #include "shapes/Sphere.h"
 #include "shapes/Cylinder.h"

@@ -1,7 +1,8 @@
 #version 330 core
 
+
 // Create a UV coordinate in variable
-in vec2 uv;
+in vec2 originaluv;
 
 // Add a sampler2D uniform
 uniform sampler2D tex;
@@ -13,13 +14,87 @@ uniform bool hueRotation;
 uniform bool blur;
 uniform bool sharpen;
 uniform bool sobel;
+//-------------weixiang zhao-------------------
+uniform bool FXAA;
+uniform bool grav;
+uniform vec2 gravPoint;
+uniform float gravStrength;
+//-------------end weixiang zhao-------------------
 uniform float height;
 uniform float width;
 
 out vec4 fragColor;
 
+vec2 uv = originaluv;
+//-----------------------------------FXAA---------------------------------------------
+vec2 resolution = vec2(width, height);
+
+const float FXAA_REDUCE_MIN = 1.0 / 128.0;
+const float FXAA_REDUCE_MUL = 1.0 / 8.0;
+const float FXAA_SPAN_MAX = 8.0;
+
+vec3 fxaa(sampler2D tex, vec2 fragCoord, vec2 resolution) {
+    vec2 invRes = 1.0 / resolution.xy;
+
+        vec3 rgbNW = texture(tex, uv + (vec2(-1.0, -1.0) * invRes)).rgb;
+        vec3 rgbNE = texture(tex, uv + (vec2(1.0, -1.0) * invRes)).rgb;
+        vec3 rgbSW = texture(tex, uv + (vec2(-1.0, 1.0) * invRes)).rgb;
+        vec3 rgbSE = texture(tex, uv + (vec2(1.0, 1.0) * invRes)).rgb;
+        vec3 rgbM  = texture(tex, uv).rgb;
+
+        // Luminance calculation
+        float lumaNW = dot(rgbNW, vec3(0.299, 0.587, 0.114));
+        float lumaNE = dot(rgbNE, vec3(0.299, 0.587, 0.114));
+        float lumaSW = dot(rgbSW, vec3(0.299, 0.587, 0.114));
+        float lumaSE = dot(rgbSE, vec3(0.299, 0.587, 0.114));
+        float lumaM  = dot(rgbM, vec3(0.299, 0.587, 0.114));
+
+        // Edge detection
+        float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
+        float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+
+        vec2 dir;
+        dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
+        dir.y = ((lumaNW + lumaSW) - (lumaNE + lumaSE));
+
+        float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN);
+        float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
+        dir = min(vec2(FXAA_SPAN_MAX, FXAA_SPAN_MAX),
+              max(vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX),
+              dir * rcpDirMin)) * invRes;
+
+        vec3 rgbA = 0.5 * (
+            texture(tex, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
+            texture(tex, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+        vec3 rgbB = rgbA * 0.5 + 0.25 * (
+            texture(tex, uv + dir * -0.5).rgb +
+            texture(tex, uv + dir * 0.5).rgb);
+
+        float lumaB = dot(rgbB, vec3(0.299, 0.587, 0.114));
+        if ((lumaB < lumaMin) || (lumaB > lumaMax)) {
+            return rgbA;
+        } else {
+            return rgbB;
+        }
+}
+//-----------------------------------End FXAA-----------------------------------------
+
+
+//-----------------------------------Gravitational Lens-------------------------------
+vec2 gravitationalLensEffect(vec2 uv, vec2 resolution, vec2 gravPoint, float gravStrength) {
+    vec2 screenCoord = uv * resolution;
+    vec2 toGravPoint = gravPoint - screenCoord;
+    float distance = length(toGravPoint);
+    float distortion = gravStrength / distance;
+    return uv + (normalize(toGravPoint) * distortion / resolution);
+}
+//-----------------------------------End Gravitational Lens---------------------------
+
 void main()
 {
+    if (grav) {
+        uv = gravitationalLensEffect(uv, vec2(width, height), gravPoint, gravStrength);
+    }
     // Set fragColor using the sampler2D at the UV coordinate
     fragColor = texture(tex, uv);
 
@@ -155,4 +230,9 @@ void main()
 
         fragColor = sqrt(fragColor1 * fragColor1 + fragColor2 * fragColor2);
     }
+
+    if (FXAA) {
+        fragColor = vec4(fxaa(tex, uv * resolution, resolution), fragColor.a);
+    }
+
 }

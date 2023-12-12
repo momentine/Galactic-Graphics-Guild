@@ -264,6 +264,20 @@ void Realtime::paintGL() {
         glUniform1f(glGetUniformLocation(m_shader, ("lightAngle[" + std::to_string(i) + "]").c_str()), light.angle);
     }
 
+    //-------------------------emits light----------------------------------------
+
+    int objs = m_scenedata.shapes.size()>8?8:m_scenedata.shapes.size();
+    glUniform1i(glGetUniformLocation(m_shader, "num_lights"), num_lights + objs);
+    for (int i = 0; i < objs; i++) {
+        auto shape = m_scenedata.shapes[i];
+        glUniform1i(glGetUniformLocation(m_shader, ("lightType[" + std::to_string(i + num_lights) + "]").c_str()), 0);
+        glUniform4fv(glGetUniformLocation(m_shader, ("lightColor[" + std::to_string(i + num_lights) + "]").c_str()),1, &glm::vec4(1.f)[0]);
+        glUniform3fv(glGetUniformLocation(m_shader, ("lightFunction[" + std::to_string(i + num_lights) + "]").c_str()),1, &glm::vec3(1.f, 1.f, 0.1f)[0]);
+        glUniform4fv(glGetUniformLocation(m_shader, ("lightPos[" + std::to_string(i + num_lights) + "]").c_str()), 1, &(shape.ctm * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f))[0]);
+    }
+
+    //-------------------------end emits light------------------------------------
+
     Debug::glErrorCheck();
 
     // Pass Shapes to Shader
@@ -373,14 +387,19 @@ void Realtime::paintGL() {
 void Realtime::paintTexture(GLuint texture){
     glUseProgram(m_texture_shader);
 
-    glUniform1i(glGetUniformLocation(m_texture_shader, "inv"), m_invert);
+    //glUniform1i(glGetUniformLocation(m_texture_shader, "inv"), m_invert);
     glUniform1i(glGetUniformLocation(m_texture_shader, "gray"), m_gray);
     glUniform1i(glGetUniformLocation(m_texture_shader, "hueRotation"), m_hueRotation);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "blur"), m_blur);
+//    glUniform1i(glGetUniformLocation(m_texture_shader, "blur"), m_blur);
     glUniform1i(glGetUniformLocation(m_texture_shader, "sharpen"), m_sharpen);
     glUniform1i(glGetUniformLocation(m_texture_shader, "sobel"), m_sobel);
     glUniform1f(glGetUniformLocation(m_texture_shader, "height"), float(m_screen_height));
     glUniform1f(glGetUniformLocation(m_texture_shader, "width"), float(m_screen_width));
+
+    glUniform1i(glGetUniformLocation(m_texture_shader, "FXAA"), m_invert);
+    glUniform2f(glGetUniformLocation(m_texture_shader, "gravPoint"), 0.5, 0.5);
+    glUniform1f(glGetUniformLocation(m_texture_shader, "gravStrength"), 2000);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "grav"), m_blur);
 
     glBindVertexArray(m_fullscreen_vao);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -456,10 +475,10 @@ void Realtime::sceneChanged() {
 void Realtime::settingsChanged() {
 //    m_tess_numObj = settings.extraCredit1;
 //    m_tess_dist = settings.extraCredit2;
-//    m_invert = settings.perPixelFilter;
+    m_invert = settings.perPixelFilter;
 //    m_gray = settings.extraCredit1;
 //    m_hueRotation = settings.extraCredit2;
-//    m_blur = settings.kernelBasedFilter;
+    m_blur = settings.kernelBasedFilter;
 //    m_sharpen = settings.extraCredit3;
 //    m_sobel = settings.extraCredit3;
 //    m_textureMapping = settings.extraCredit4;

@@ -13,7 +13,7 @@ uniform float kd;
 uniform float ks;
 uniform int num_lights;
 
-const int max_lights = 8;
+const int max_lights = 16;
 uniform int lightType[max_lights];
 uniform vec4 lightColor[max_lights];
 uniform vec3 lightFunction[max_lights];
