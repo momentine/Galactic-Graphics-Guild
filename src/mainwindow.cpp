@@ -31,7 +31,7 @@ void MainWindow::initialize() {
     camera_label->setText("Camera");
     camera_label->setFont(font);
     QLabel *filters_label = new QLabel(); // Filters label
-    filters_label->setText("Filters");
+    filters_label->setText("Features");
     filters_label->setFont(font);
     QLabel *ec_label = new QLabel(); // Extra Credit label
     ec_label->setText("Extra Credit");
@@ -58,7 +58,7 @@ void MainWindow::initialize() {
 
     // Create checkbox for per-pixel filter
     filter1 = new QCheckBox();
-    filter1->setText(QStringLiteral("Per-Pixel Filter"));
+    filter1->setText(QStringLiteral("FXAA"));
     filter1->setChecked(false);
 
     // Create checkbox for kernel-based filter
@@ -195,19 +195,19 @@ void MainWindow::initialize() {
 
     // Extra Credit:
     ec1 = new QCheckBox();
-    ec1->setText(QStringLiteral("Extra Credit 1"));
+    ec1->setText(QStringLiteral("Tessellation Shader"));
     ec1->setChecked(false);
 
     ec2 = new QCheckBox();
-    ec2->setText(QStringLiteral("Extra Credit 2"));
+    ec2->setText(QStringLiteral("Movement"));
     ec2->setChecked(false);
 
     ec3 = new QCheckBox();
-    ec3->setText(QStringLiteral("Extra Credit 3"));
+    ec3->setText(QStringLiteral("Doppler Effect"));
     ec3->setChecked(false);
 
     ec4 = new QCheckBox();
-    ec4->setText(QStringLiteral("Extra Credit 4"));
+    ec4->setText(QStringLiteral("Texture"));
     ec4->setChecked(false);
 
     vLayout->addWidget(uploadFile);
@@ -233,14 +233,16 @@ void MainWindow::initialize() {
 
 
     vLayout->addWidget(filters_label);
-//    vLayout->addWidget(filter1);
+
 //    vLayout->addWidget(filter2);
     // Extra Credit:
-    vLayout->addWidget(ec_label);
-    vLayout->addWidget(ec1);
+//    vLayout->addWidget(ec_label);
+
+    vLayout->addWidget(ec4);
     vLayout->addWidget(ec2);
     vLayout->addWidget(ec3);
-    vLayout->addWidget(ec4);
+    vLayout->addWidget(filter1);
+    vLayout->addWidget(ec1);
 
     connectUIElements();
 

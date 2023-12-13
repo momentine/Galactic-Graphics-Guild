@@ -1,5 +1,6 @@
 #include "realtime.h"
 
+#include <glm/gtc/type_ptr.hpp>
 #include <QCoreApplication>
 #include <QMouseEvent>
 #include <QKeyEvent>
@@ -29,6 +30,111 @@ Realtime::Realtime(QWidget *parent)
     m_cone = new Cone();
     updateShapeParams(settings.shapeParameter1, settings.shapeParameter2);
 }
+
+void Realtime::loadSkyboxTextures() {
+
+    std::string facesCubemap[6] = {
+        ":/resources/skybox/skybox_right.png",  // Right (+X)
+        ":/resources/skybox/skybox_left.png",   // Left (-X)
+        ":/resources/skybox/skybox_up.png",     // Top (+Y)
+        ":/resources/skybox/skybox_down.png",   // Bottom (-Y)
+        ":/resources/skybox/skybox_front.png",  // Front (+Z)
+        ":/resources/skybox/skybox_back.png"    // Back (-Z)
+    };
+
+    // Generate and bind the texture object
+    glGenTextures(1, &cubemapTexture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+
+    // Load each texture face
+    for (unsigned int i = 0; i < 6; i++) {
+        QImage image;
+        if (image.load(QString::fromStdString(facesCubemap[i]))) {
+            // Convert the image to the appropriate format and load it into the cubemap
+            image = image.convertToFormat(QImage::Format_RGB888).mirrored(true, false);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, image.width(), image.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, image.bits());
+        } else {
+            std::cerr << "Failed to load texture: " << facesCubemap[i] << std::endl;
+        }
+    }
+
+
+    // Set texture parameters
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    // Unbind the texture
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+}
+
+void Realtime::setupSkybox() {
+    float skyboxVertices[] = {
+
+        //   Coordinates
+        -1.0f, -1.0f,  1.0f,//        7--------6
+        1.0f, -1.0f,  1.0f,//       /|       /|
+        1.0f, -1.0f, -1.0f,//      4--------5 |
+        -1.0f, -1.0f, -1.0f,//      | |      | |
+        -1.0f,  1.0f,  1.0f,//      | 3------|-2
+        1.0f,  1.0f,  1.0f,//      |/       |/
+        1.0f,  1.0f, -1.0f,//      0--------1
+        -1.0f,  1.0f, -1.0f
+    };
+
+
+    unsigned int skyboxIndices[] = {
+        // indices for each triangle of each face
+        1, 5, 6, 6, 2, 1, // right face
+        0, 3, 7, 7, 4, 0, // left face
+        4, 7, 6, 6, 5, 4, // top face
+        0, 1, 2, 2, 3, 0, // bottom face
+        3, 2, 6, 6, 7, 3, // front face
+        0, 4, 5, 5, 1, 0, // back face
+    };
+
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glGenBuffers(1, &skyboxEBO);
+
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndices), skyboxIndices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0); // Unbind VAO
+}
+
+void Realtime::renderSkybox() {
+    glDepthFunc(GL_LEQUAL);
+    glUseProgram(m_skyboxShader); // Use m_skyboxShader for rendering skybox
+
+    glm::mat4 view = glm::mat4(glm::mat3(camera.getViewMatrix()));
+    glm::mat4 projection = camera.getProjMatrix();
+
+    // Set uniforms for view and projection matrices
+    GLuint viewLoc = glGetUniformLocation(m_skyboxShader, "view");
+    GLuint projLoc = glGetUniformLocation(m_skyboxShader, "projection");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    glBindVertexArray(skyboxVAO);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    glUseProgram(0); // Unbind shader program
+    glDepthFunc(GL_LESS);
+}
+
+
 
 void Realtime::updateShapeParams(int param1, int param2) {
     if (m_tess_numObj) {
@@ -65,6 +171,9 @@ void Realtime::finish() {
     glDeleteTextures(1, &m_fbo_texture);
     glDeleteRenderbuffers(1, &m_fbo_renderbuffer);
     glDeleteFramebuffers(1, &m_fbo);
+
+    //skybox
+    glDeleteProgram(m_skyboxShader);
 
     this->doneCurrent();
 }
@@ -127,6 +236,11 @@ void Realtime::initializeGL() {
     glViewport(0, 0, size().width() * m_devicePixelRatio, size().height() * m_devicePixelRatio);
 
     // Students: anything requiring OpenGL calls when the program starts should be done here
+
+    m_skyboxShader = ShaderLoader::createShaderProgram(":/resources/shaders/skybox.vert", ":/resources/shaders/skybox.frag");
+    loadSkyboxTextures();
+    setupSkybox();
+
     if (!m_tess_dist_shader) {
         m_shader = ShaderLoader::createShaderProgram(":/resources/shaders/default.vert", ":/resources/shaders/default.frag");
     } else {
@@ -227,6 +341,11 @@ void Realtime::paintGL() {
     // Clear screen color and depth before painting
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // Render the skybox first
+    glDepthMask(GL_FALSE);  // Disable depth write
+    renderSkybox();
+    glDepthMask(GL_TRUE);   // Re-enable depth write
+
     // activate the shader program by calling glUseProgram with `m_shader`
     glUseProgram(m_shader);
 
@@ -264,11 +383,33 @@ void Realtime::paintGL() {
         glUniform1f(glGetUniformLocation(m_shader, ("lightAngle[" + std::to_string(i) + "]").c_str()), light.angle);
     }
 
+    //-------------------------emits light----------------------------------------
+
+    if(m_scenedata.shapes.size() == 9){
+        auto shape = m_scenedata.shapes[8];
+        glUniform1i(glGetUniformLocation(m_shader, "num_lights"), num_lights + 1);
+        glUniform1i(glGetUniformLocation(m_shader, ("lightType[" + std::to_string(1 + num_lights) + "]").c_str()), 0);
+        glUniform4fv(glGetUniformLocation(m_shader, ("lightColor[" + std::to_string(1 + num_lights) + "]").c_str()),1, &glm::vec4(1.f)[0]);
+        glUniform3fv(glGetUniformLocation(m_shader, ("lightFunction[" + std::to_string(1 + num_lights) + "]").c_str()),1, &glm::vec3(1.f, 1.f, 0.1f)[0]);
+        glUniform4fv(glGetUniformLocation(m_shader, ("lightPos[" + std::to_string(1 + num_lights) + "]").c_str()), 1, &(shape.ctm * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f))[0]);
+    }
+
+    //-------------------------end emits light------------------------------------
+
+
     Debug::glErrorCheck();
 
     // Pass Shapes to Shader
     for (int i = 0; i < m_scenedata.shapes.size(); i++) {
         auto shape = m_scenedata.shapes[i];
+
+        if(i == 4 && velocityToCam[i] < -0.1f && settings.extraCredit3){
+            continue;
+        }
+
+        if(i == 8 && velocityToCam[i] < -0.18f && settings.extraCredit3){
+            continue;
+        }
 
         if (m_tess_dist) {
             auto centerObject = shape.ctm * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // find the center of object in world space
@@ -380,14 +521,19 @@ void Realtime::paintGL() {
 void Realtime::paintTexture(GLuint texture){
     glUseProgram(m_texture_shader);
 
-    glUniform1i(glGetUniformLocation(m_texture_shader, "inv"), m_invert);
+    //glUniform1i(glGetUniformLocation(m_texture_shader, "inv"), m_invert);
     glUniform1i(glGetUniformLocation(m_texture_shader, "gray"), m_gray);
     glUniform1i(glGetUniformLocation(m_texture_shader, "hueRotation"), m_hueRotation);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "blur"), m_blur);
+    //glUniform1i(glGetUniformLocation(m_texture_shader, "blur"), m_blur);
     glUniform1i(glGetUniformLocation(m_texture_shader, "sharpen"), m_sharpen);
     glUniform1i(glGetUniformLocation(m_texture_shader, "sobel"), m_sobel);
     glUniform1f(glGetUniformLocation(m_texture_shader, "height"), float(m_screen_height));
     glUniform1f(glGetUniformLocation(m_texture_shader, "width"), float(m_screen_width));
+
+    glUniform1i(glGetUniformLocation(m_texture_shader, "FXAA"), m_invert);
+//    glUniform2f(glGetUniformLocation(m_texture_shader, "gravPoint"), 0.5, 0.5);
+//    glUniform1f(glGetUniformLocation(m_texture_shader, "gravStrength"), 2000);
+//    glUniform1i(glGetUniformLocation(m_texture_shader, "grav"), m_blur);
 
     glBindVertexArray(m_fullscreen_vao);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -463,13 +609,14 @@ void Realtime::sceneChanged() {
 void Realtime::settingsChanged() {
 //    m_tess_numObj = settings.extraCredit1;
 //    m_tess_dist = settings.extraCredit2;
-//    m_invert = settings.perPixelFilter;
+    m_invert = settings.perPixelFilter;
 //    m_gray = settings.extraCredit1;
 //    m_hueRotation = settings.extraCredit2;
 //    m_blur = settings.kernelBasedFilter;
 //    m_sharpen = settings.extraCredit3;
 //    m_sobel = settings.extraCredit3;
     m_textureMapping = settings.extraCredit4;
+    m_tess_dist_shader = settings.extraCredit1;
 
     camera.setNearAndFar(settings.nearPlane, settings.farPlane);
     camera.setAspectRatio(((float)size().width())/((float)size().height()));
@@ -558,11 +705,14 @@ void Realtime::timerEvent(QTimerEvent *event) {
         updateLight();
     }
 
+
     float moveLength = 3 * settings.objectSpeed * deltaTime;
     for (int i = 0; i < m_scenedata.shapes.size(); i++){
         RenderShapeData &shape = m_scenedata.shapes[i];
         float previousDis = glm::length(shape.ctm * glm::vec4(0,0,0,1) - previousCamPos);
-        shape.ctm = rotationMatrix(glm::radians(-moveLength*angularSpeed[i]), glm::vec3(0.0f, 1.0f, 0.0f)) * shape.ctm;
+        if(settings.extraCredit2){
+            shape.ctm = rotationMatrix(glm::radians(-moveLength*angularSpeed[i]), glm::vec3(0.0f, 1.0f, 0.0f)) * shape.ctm;
+        }
         float currentDis = glm::length(shape.ctm * glm::vec4(0,0,0,1) - camera.getInvViewMatrix() * glm::vec4(0,0,0,1));
         velocityToCam[i] = previousDis - currentDis;
     }

@@ -39,6 +39,14 @@ public:
     void settingsChanged();
     void saveViewportImage(std::string filePath);
 
+    // Skybox members
+    GLuint skyboxVBO, skyboxVAO, skyboxEBO;
+    GLuint cubemapTexture;
+    void loadSkyboxTextures();
+    void setupSkybox();
+    void renderSkybox();
+    GLuint m_skyboxShader;
+
 public slots:
     void tick(QTimerEvent* event);                      // Called once per tick of m_timer
 
