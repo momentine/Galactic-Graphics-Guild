@@ -36,6 +36,11 @@ void MainWindow::initialize() {
     QLabel *ec_label = new QLabel(); // Extra Credit label
     ec_label->setText("Extra Credit");
     ec_label->setFont(font);
+
+    QLabel *speed_label = new QLabel(); // Camera label
+    speed_label->setText("Speed");
+    speed_label->setFont(font);
+
     QLabel *param1_label = new QLabel(); // Parameter 1 label
     param1_label->setText("Parameter 1:");
     QLabel *param2_label = new QLabel(); // Parameter 2 label
@@ -44,6 +49,10 @@ void MainWindow::initialize() {
     near_label->setText("Near Plane:");
     QLabel *far_label = new QLabel(); // Far plane label
     far_label->setText("Far Plane:");
+    QLabel *cameraSpeed_label = new QLabel(); // Speed label
+    cameraSpeed_label->setText("Camera Speed:");
+    QLabel *obejctSpeed_label = new QLabel(); // Speed label
+    obejctSpeed_label->setText("Object Speed:");
 
 
 
@@ -70,6 +79,12 @@ void MainWindow::initialize() {
     QGroupBox *p2Layout = new QGroupBox(); // horizonal slider 2 alignment
     QHBoxLayout *l2 = new QHBoxLayout();
 
+    QGroupBox *cameraSpeedLayout = new QGroupBox(); // speed slider alignment
+    QHBoxLayout *lcameraSpeed = new QHBoxLayout();
+
+    QGroupBox *objectSpeedLayout = new QGroupBox(); // speed slider alignment
+    QHBoxLayout *lobjectSpeed = new QHBoxLayout();
+
     // Create slider controls to control parameters
     p1Slider = new QSlider(Qt::Orientation::Horizontal); // Parameter 1 slider
     p1Slider->setTickInterval(1);
@@ -95,6 +110,32 @@ void MainWindow::initialize() {
     p2Box->setSingleStep(1);
     p2Box->setValue(1);
 
+    // Create slider controls to control parameters
+    cameraSpeedSlider = new QSlider(Qt::Orientation::Horizontal); // Speed slider
+    cameraSpeedSlider->setTickInterval(1);
+    cameraSpeedSlider->setMinimum(1);
+    cameraSpeedSlider->setMaximum(25);
+    cameraSpeedSlider->setValue(1);
+
+    cameraSpeedBox = new QSpinBox();
+    cameraSpeedBox->setMinimum(1);
+    cameraSpeedBox->setMaximum(25);
+    cameraSpeedBox->setSingleStep(1);
+    cameraSpeedBox->setValue(1);
+
+    // Create slider controls to control parameters
+    objectSpeedSlider = new QSlider(Qt::Orientation::Horizontal); // Speed slider
+    objectSpeedSlider->setTickInterval(1);
+    objectSpeedSlider->setMinimum(1);
+    objectSpeedSlider->setMaximum(100);
+    objectSpeedSlider->setValue(1);
+
+    objectSpeedBox = new QSpinBox();
+    objectSpeedBox->setMinimum(1);
+    objectSpeedBox->setMaximum(100);
+    objectSpeedBox->setSingleStep(1);
+    objectSpeedBox->setValue(1);
+
     // Adds the slider and number box to the parameter layouts
     l1->addWidget(p1Slider);
     l1->addWidget(p1Box);
@@ -103,6 +144,14 @@ void MainWindow::initialize() {
     l2->addWidget(p2Slider);
     l2->addWidget(p2Box);
     p2Layout->setLayout(l2);
+
+    lcameraSpeed->addWidget(cameraSpeedSlider);
+    lcameraSpeed->addWidget(cameraSpeedBox);
+    cameraSpeedLayout->setLayout(lcameraSpeed);
+
+    lobjectSpeed->addWidget(objectSpeedSlider);
+    lobjectSpeed->addWidget(objectSpeedBox);
+    objectSpeedLayout->setLayout(lobjectSpeed);
 
     // Creates the boxes containing the camera sliders and number boxes
     QGroupBox *nearLayout = new QGroupBox(); // horizonal near slider alignment
@@ -163,19 +212,29 @@ void MainWindow::initialize() {
 
     vLayout->addWidget(uploadFile);
     vLayout->addWidget(saveImage);
-    vLayout->addWidget(tesselation_label);
-    vLayout->addWidget(param1_label);
-    vLayout->addWidget(p1Layout);
-    vLayout->addWidget(param2_label);
-    vLayout->addWidget(p2Layout);
+//    vLayout->addWidget(tesselation_label);
+//    vLayout->addWidget(param1_label);
+//    vLayout->addWidget(p1Layout);
+//    vLayout->addWidget(param2_label);
+//    vLayout->addWidget(p2Layout);
     vLayout->addWidget(camera_label);
     vLayout->addWidget(near_label);
     vLayout->addWidget(nearLayout);
     vLayout->addWidget(far_label);
     vLayout->addWidget(farLayout);
+
+    vLayout->addWidget(speed_label);
+
+    vLayout->addWidget(cameraSpeed_label);
+    vLayout->addWidget(cameraSpeedLayout);
+
+    vLayout->addWidget(obejctSpeed_label);
+    vLayout->addWidget(objectSpeedLayout);
+
+
     vLayout->addWidget(filters_label);
-    vLayout->addWidget(filter1);
-    vLayout->addWidget(filter2);
+//    vLayout->addWidget(filter1);
+//    vLayout->addWidget(filter2);
     // Extra Credit:
     vLayout->addWidget(ec_label);
     vLayout->addWidget(ec1);
@@ -186,12 +245,14 @@ void MainWindow::initialize() {
     connectUIElements();
 
     // Set default values of 5 for tesselation parameters
-    onValChangeP1(5);
-    onValChangeP2(5);
+    onValChangeP1(25);
+    onValChangeP2(25);
+    onValChangeCameraSpeed(5);
+    onValChangeObjectSpeed(5);
 
     // Set default values for near and far planes
     onValChangeNearBox(0.1f);
-    onValChangeFarBox(10.f);
+    onValChangeFarBox(100.f);
 }
 
 void MainWindow::finish() {
@@ -209,6 +270,8 @@ void MainWindow::connectUIElements() {
     connectNear();
     connectFar();
     connectExtraCredit();
+    connectCameraSpeedSlider();
+    connectObjectSpeedSlider();
 }
 
 void MainWindow::connectPerPixelFilter() {
@@ -225,6 +288,18 @@ void MainWindow::connectUploadFile() {
 
 void MainWindow::connectSaveImage() {
     connect(saveImage, &QPushButton::clicked, this, &MainWindow::onSaveImage);
+}
+
+void MainWindow::connectCameraSpeedSlider() {
+    connect(cameraSpeedSlider, &QSlider::valueChanged, this, &MainWindow::onValChangeCameraSpeed);
+    connect(cameraSpeedBox, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+            this, &MainWindow::onValChangeCameraSpeed);
+}
+
+void MainWindow::connectObjectSpeedSlider() {
+    connect(objectSpeedSlider, &QSlider::valueChanged, this, &MainWindow::onValChangeObjectSpeed);
+    connect(objectSpeedBox, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+            this, &MainWindow::onValChangeObjectSpeed);
 }
 
 void MainWindow::connectParam1() {
@@ -309,6 +384,20 @@ void MainWindow::onSaveImage() {
                                                         .append(sceneName), tr("Image Files (*.png)"));
     std::cout << "Saving image to: \"" << filePath.toStdString() << "\"." << std::endl;
     realtime->saveViewportImage(filePath.toStdString());
+}
+
+void MainWindow::onValChangeCameraSpeed(int newValue){
+    cameraSpeedSlider->setValue(newValue);
+    cameraSpeedBox->setValue(newValue);
+    settings.cameraSpeed = cameraSpeedSlider->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeObjectSpeed(int newValue){
+    objectSpeedSlider->setValue(newValue);
+    objectSpeedBox->setValue(newValue);
+    settings.objectSpeed = objectSpeedSlider->value();
+    realtime->settingsChanged();
 }
 
 void MainWindow::onValChangeP1(int newValue) {

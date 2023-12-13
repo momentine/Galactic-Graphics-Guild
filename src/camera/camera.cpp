@@ -19,6 +19,10 @@ Camera::Camera(SceneCameraData scd, float near, float far, float aspectRatio)
    ProjectionMatrix();
 }
 
+glm::vec3 Camera::getLook() const {
+   return glm::vec3(c_look.x, c_look.y, c_look.z);
+}
+
 glm::mat4 Camera::getViewMatrix() const {
    return c_viewMatrix;
 }

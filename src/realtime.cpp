@@ -289,9 +289,16 @@ void Realtime::paintGL() {
         glUniform1i(glGetUniformLocation(m_shader, "objTextureMap"), shape.primitive.material.textureMap.isUsed);
         glUniform1f(glGetUniformLocation(m_shader, "blend"), shape.primitive.material.blend);
 
+        glUniform1i(glGetUniformLocation(m_shader, "doppler"), settings.extraCredit3);
+        glUniform1f(glGetUniformLocation(m_shader, "speedRatio"), velocityToCam[i] * 2.0f);
+
         if (m_textureMapping && shape.primitive.material.textureMap.isUsed) {
             QImage img;
+
+            //std::cout<<shape.primitive.material.textureMap.filename<<std::endl;
+
             if (!img.load(QString::fromStdString(shape.primitive.material.textureMap.filename))) {
+
                 throw std::runtime_error("texture file could not be loaded");
             }
             img = img.convertToFormat(QImage::Format_RGBX8888).mirrored();
@@ -462,7 +469,7 @@ void Realtime::settingsChanged() {
 //    m_blur = settings.kernelBasedFilter;
 //    m_sharpen = settings.extraCredit3;
 //    m_sobel = settings.extraCredit3;
-//    m_textureMapping = settings.extraCredit4;
+    m_textureMapping = settings.extraCredit4;
 
     camera.setNearAndFar(settings.nearPlane, settings.farPlane);
     camera.setAspectRatio(((float)size().width())/((float)size().height()));
@@ -510,6 +517,7 @@ void Realtime::mouseMoveEvent(QMouseEvent *event) {
         if(deltaY != 0){
             camera.rotateCameraPerpLookUp(-float(deltaY)/10.0f);
         }
+        updateLight();
 
         update(); // asks for a PaintGL() call to occur
     }
@@ -520,27 +528,110 @@ void Realtime::timerEvent(QTimerEvent *event) {
     float deltaTime = elapsedms * 0.001f;
     m_elapsedTimer.restart();
 
+    float persecond = settings.cameraSpeed * deltaTime;
+
+    glm::vec4 previousCamPos = camera.getInvViewMatrix() * glm::vec4(0,0,0,1);
+
     // Use deltaTime and m_keyMap here to move around
     if(m_keyMap[Qt::Key_W] == true) {
-        camera.translateCameraLook(5*deltaTime, true);
+        camera.translateCameraLook(persecond, true);
+        updateLight();
     }
     if(m_keyMap[Qt::Key_S] == true) {
-        camera.translateCameraLook(5*deltaTime, false);
+        camera.translateCameraLook(persecond, false);
+        updateLight();
     }
     if(m_keyMap[Qt::Key_A] == true) {
-        camera.translateCameraRight(5*deltaTime, false);
+        camera.translateCameraRight(persecond, false);
+        updateLight();
     }
     if(m_keyMap[Qt::Key_D] == true) {
-        camera.translateCameraRight(5*deltaTime, true);
+        camera.translateCameraRight(persecond, true);
+        updateLight();
     }
     if(m_keyMap[Qt::Key_Space] == true) {
-        camera.translateCameraWorldUp(5*deltaTime, true);
+        camera.translateCameraWorldUp(persecond, true);
+        updateLight();
     }
     if(m_keyMap[Qt::Key_Control] == true) {
-        camera.translateCameraWorldUp(5*deltaTime, false);
+        camera.translateCameraWorldUp(persecond, false);
+        updateLight();
+    }
+
+    float moveLength = 3 * settings.objectSpeed * deltaTime;
+    for (int i = 0; i < m_scenedata.shapes.size(); i++){
+        RenderShapeData &shape = m_scenedata.shapes[i];
+        float previousDis = glm::length(shape.ctm * glm::vec4(0,0,0,1) - previousCamPos);
+        shape.ctm = rotationMatrix(glm::radians(-moveLength*angularSpeed[i]), glm::vec3(0.0f, 1.0f, 0.0f)) * shape.ctm;
+        float currentDis = glm::length(shape.ctm * glm::vec4(0,0,0,1) - camera.getInvViewMatrix() * glm::vec4(0,0,0,1));
+        velocityToCam[i] = previousDis - currentDis;
+    }
+
+
+    if(m_scenedata.shapes.size() == 9){
+        std::string filename = m_scenedata.shapes[8].primitive.material.textureMap.filename;
+        filename = filename.substr(0, filename.length() - 5);
+        textureCounter += 1;
+        if(textureCounter == 100){
+            textureCounter = 0;
+        }
+        if(textureCounter % 10 == 0){
+            std::string num = std::to_string(textureCounter/10);
+            m_scenedata.shapes[8].primitive.material.textureMap.filename = filename + num + ".png";
+        }
+
+        //std::cout<<m_scenedata.shapes[8].primitive.material.textureMap.filename<<std::endl;
     }
 
     update(); // asks for a PaintGL() call to occur
+}
+
+void Realtime::updateLight(){
+    glm::vec4 camPos = camera.getInvViewMatrix() * glm::vec4(0,0,0,1);
+
+    glm::vec3 direction = camera.getLook();
+    glm::vec3 displacement = 0.1f * direction;
+
+    glm::mat4 translation = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
+                                      0.0f, 1.0f, 0.0f, 0.0f,
+                                      0.0f, 0.0f, 1.0f, 0.0f,
+                                      displacement.x, displacement.y, displacement.z, 1.0f);
+
+    m_scenedata.lights[0].pos = translation * camPos;
+}
+
+glm::mat4 Realtime::rotationMatrix(float angle, glm::vec3 axis) {
+    // normalize the axis
+    axis = glm::normalize(axis);
+
+    // calculate with angle provided
+    float cosTheta = std::cos(angle);
+    float sinTheta = std::sin(angle);
+    float oneMinusCosTheta = 1.0f - cosTheta;
+
+    // Rodrigues' rotation formula
+    glm::mat4 rotation;
+    rotation[0][0] = cosTheta + axis.x * axis.x * oneMinusCosTheta;
+    rotation[0][1] = axis.x * axis.y * oneMinusCosTheta - axis.z * sinTheta;
+    rotation[0][2] = axis.x * axis.z * oneMinusCosTheta + axis.y * sinTheta;
+    rotation[0][3] = 0.0f;
+
+    rotation[1][0] = axis.x * axis.y * oneMinusCosTheta + axis.z * sinTheta;
+    rotation[1][1] = cosTheta + axis.y * axis.y * oneMinusCosTheta;
+    rotation[1][2] = axis.y * axis.z * oneMinusCosTheta - axis.x * sinTheta;
+    rotation[1][3] = 0.0f;
+
+    rotation[2][0] = axis.x * axis.z * oneMinusCosTheta - axis.y * sinTheta;
+    rotation[2][1] = axis.y * axis.z * oneMinusCosTheta + axis.x * sinTheta;
+    rotation[2][2] = cosTheta + axis.z * axis.z * oneMinusCosTheta;
+    rotation[2][3] = 0.0f;
+
+    rotation[3][0] = 0.0f;
+    rotation[3][1] = 0.0f;
+    rotation[3][2] = 0.0f;
+    rotation[3][3] = 1.0f;
+
+    return rotation;
 }
 
 // DO NOT EDIT

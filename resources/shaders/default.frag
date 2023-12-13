@@ -32,6 +32,9 @@ uniform bool objTextureMap;
 uniform sampler2D tex;
 uniform float blend;
 
+uniform bool doppler;
+uniform float speedRatio;
+
 void main() {
     fragColor = vec4(0.0f);
 
@@ -71,10 +74,12 @@ void main() {
         }
 
         vec4 diffuseColor = kd * diffuse_c;
+        vec4 specularColor = ks * specular_c;
 
         if (textureMapping && objTextureMap) {
             vec4 color = texture(tex, uv);
             diffuseColor = blend * vec4(color[0], color[1], color[2], color[3]) + (1.0f-blend) * diffuseColor;
+            specularColor = diffuseColor;
         }
 
         fragColor += clamp(f_att * diffuseColor * intensity * clamp(dot(vec4(normalize(worldspace_normal), 0.0f), directionToLight), 0.0f, 1.0f), 0, 1);
@@ -82,8 +87,29 @@ void main() {
         vec3 R = normalize(vec3(reflect(-directionToLight, vec4(normalize(worldspace_normal), 0.0f))));
         vec3 E = normalize(vec3(cam_pos) - vec3(worldspace_position));
         if (n > 0) {
-            fragColor += clamp(f_att * ks * specular_c * intensity * pow(clamp(dot(R, E), 0.0f, 1.0f), n), 0.0f, 1.0f);
+            fragColor += clamp(f_att * specularColor * intensity * pow(clamp(dot(R, E), 0.0f, 1.0f), n), 0.0f, 1.0f);
         }
+    }
+
+    if(doppler){
+        float red = fragColor.r;
+        float blue = fragColor.b;
+        float green = fragColor.g;
+
+        if(fragColor.r != 0.0f || fragColor.g != 0.0f || fragColor.b != 0.0f)
+        if (speedRatio > 0) { // red shift
+            red = min(fragColor.r - speedRatio, 1.0);
+            blue = max(fragColor.b + speedRatio, 0.0);
+            green = max(fragColor.g + speedRatio, 0.0);
+        }
+        else if (speedRatio < 0){ // blue shift
+            red = max(fragColor.r - speedRatio, 0.0);
+            blue = max(fragColor.b + speedRatio, 0.0);
+            green = min(fragColor.g + speedRatio, 1.0);
+        }
+        fragColor.r = red;
+        fragColor.b = blue;
+        fragColor.g = green;
     }
 
 //    fragColor = vec4(uv[0], 0.0, 0.0, 1.0);

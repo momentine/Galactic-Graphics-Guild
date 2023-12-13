@@ -16,7 +16,7 @@
 #include "utils/sceneparser.h"
 #include "utils/shaderloader.h"
 #include "camera/camera.h"
-#include "shapes/Triangle.h"
+//#include "shapes/Triangle.h"
 #include "shapes/Cube.h"
 #include "shapes/Sphere.h"
 #include "shapes/Cylinder.h"
@@ -86,7 +86,13 @@ private:
     void updateShapeParams(int param1, int param2);
     void createVBOVAO(GLuint &vbo, GLuint &vao, std::vector<GLfloat> data);
     void updateVBO();
+    glm::mat4 rotationMatrix(float angle, glm::vec3 axis);
+    void updateLight();
 
+    int textureCounter = 0;
+
+    std::vector<float> angularSpeed = {0.0061, 0.0119, 0.0339, 0.0843, 0.5319, 1.0f, 1.620, 4.1667, 0.0f};
+    std::vector<float> velocityToCam{9};
     // Shaders
     GLuint m_shader;
 

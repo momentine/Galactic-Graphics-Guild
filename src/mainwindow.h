@@ -28,6 +28,8 @@ private:
     void connectUploadFile();
     void connectSaveImage();
     void connectExtraCredit();
+    void connectCameraSpeedSlider();
+    void connectObjectSpeedSlider();
 
     Realtime *realtime;
     AspectRatioWidget *aspectRatioWidget;
@@ -37,6 +39,10 @@ private:
     QPushButton *saveImage;
     QSlider *p1Slider;
     QSlider *p2Slider;
+    QSlider *cameraSpeedSlider;
+    QSpinBox *cameraSpeedBox;
+    QSlider *objectSpeedSlider;
+    QSpinBox *objectSpeedBox;
     QSpinBox *p1Box;
     QSpinBox *p2Box;
     QSlider *nearSlider;
@@ -61,6 +67,9 @@ private slots:
     void onValChangeFarSlider(int newValue);
     void onValChangeNearBox(double newValue);
     void onValChangeFarBox(double newValue);
+    void onValChangeCameraSpeed(int newValue);
+    void onValChangeObjectSpeed(int newValue);
+
 
     // Extra Credit:
     void onExtraCredit1();

@@ -8,6 +8,8 @@ class Camera
 public:
    Camera(SceneCameraData cameraData, float near, float far, float aspectRatio);
 
+   glm::vec3 getLook() const;
+
    glm::mat4 getViewMatrix() const;
    glm::mat4 getInvViewMatrix() const;
 
