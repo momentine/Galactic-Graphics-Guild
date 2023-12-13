@@ -16,7 +16,7 @@
 #include "utils/sceneparser.h"
 #include "utils/shaderloader.h"
 #include "camera/camera.h"
-#include "shapes/Triangle.h"
+//#include "shapes/Triangle.h"
 #include "shapes/Cube.h"
 #include "shapes/Sphere.h"
 #include "shapes/Cylinder.h"
@@ -38,6 +38,14 @@ public:
     void sceneChanged();
     void settingsChanged();
     void saveViewportImage(std::string filePath);
+
+    // Skybox members
+    GLuint skyboxVBO, skyboxVAO, skyboxEBO;
+    GLuint cubemapTexture;
+    void loadSkyboxTextures();
+    void setupSkybox();
+    void renderSkybox();
+    GLuint m_skyboxShader;
 
 public slots:
     void tick(QTimerEvent* event);                      // Called once per tick of m_timer

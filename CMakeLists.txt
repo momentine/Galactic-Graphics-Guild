@@ -89,6 +89,30 @@ qt6_add_resources(${PROJECT_NAME} "Resources"
         resources/shaders/default_tes.vert
         resources/shaders/texture.vert
         resources/shaders/texture.frag
+
+        resources/shaders/skybox.vert
+        resources/shaders/skybox.frag
+
+#        resources/skybox/right.jpg
+#        resources/skybox/left.jpg
+#        resources/skybox/top.jpg
+#        resources/skybox/bottom.jpg
+#        resources/skybox/front.jpg
+#        resources/skybox/back.jpg
+
+        resources/skybox/skybox_up.png
+        resources/skybox/skybox_down.png
+        resources/skybox/skybox_right.png
+        resources/skybox/skybox_left.png
+        resources/skybox/skybox_back.png
+        resources/skybox/skybox_front.png
+
+)
+
+target_sources(galactic_graphics_guild_other_files
+  PRIVATE
+    resources/shaders/skybox.frag
+    resources/shaders/skybox.vert
 )
 
 # GLEW: this provides support for Windows (including 64-bit)

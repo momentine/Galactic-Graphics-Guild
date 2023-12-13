@@ -11,6 +11,8 @@ out vec3 worldspace_normal2[];
 out mat4 pvm2[];
 
 uniform float tesParam;
+uniform float maxTessLevel; // Maximum tessellation level
+uniform float cameraDistanceFactor; // Factor for adjusting tessellation based on camera distance
 
 void main() {
     // Pass through vertex positions
@@ -21,14 +23,12 @@ void main() {
     worldspace_normal2[gl_InvocationID] = worldspace_normal[gl_InvocationID];
     pvm2[gl_InvocationID] = pvm[gl_InvocationID];
 
-    // Set tessellation levels based on depth
-//    gl_TessLevelOuter[0] = changeTesDepth * gl_in[0].gl_Position.z;
-//    gl_TessLevelOuter[1] = changeTesDepth * gl_in[1].gl_Position.z;
-//    gl_TessLevelOuter[2] = changeTesDepth * gl_in[2].gl_Position.z;
-     gl_TessLevelOuter[0] = tesParam;
-     gl_TessLevelOuter[1] = tesParam;
-     gl_TessLevelOuter[2] = tesParam;
+    // Calculate tessellation level based on distance from camera
+    float distance = length(cameraDistanceFactor * gl_in[gl_InvocationID].gl_Position.xyz);
+    float tessLevel = mix(maxTessLevel, 1.0, distance / maxTessLevel);
 
-    // Inner tessellation level (optional)
-     gl_TessLevelInner[0] = tesParam;
+    gl_TessLevelOuter[0] = tessLevel;
+    gl_TessLevelOuter[1] = tessLevel;
+    gl_TessLevelOuter[2] = tessLevel;
+    gl_TessLevelInner[0] = tessLevel;
 }
